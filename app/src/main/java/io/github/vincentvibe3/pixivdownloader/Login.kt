@@ -2,27 +2,20 @@ package io.github.vincentvibe3.pixivdownloader
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
-import android.content.res.Resources
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,12 +25,9 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.CustomChromeClient
-import android.util.DisplayMetrics
 
-import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.Alignment
+import io.github.vincentvibe3.pixivdownloader.components.ActivityTopBar
 
 
 class LoginActivity : ComponentActivity() {
@@ -93,6 +83,9 @@ fun Login(){
                 })
             }
             val webProgress = rememberSwipeRefreshState(progress.value != 100)
+            if (webView.value.url =="https://www.pixiv.net/en/"){
+                (context as Activity).finish()
+            }
             LinearProgressIndicator(
                 progress = progress.value.toFloat() / 100,
                 modifier = Modifier

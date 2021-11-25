@@ -8,7 +8,6 @@ class CustomChromeClient(private val progress: MutableState<Int>):WebChromeClien
 
     override fun onProgressChanged(view: WebView?, newProgress: Int) {
         progress.value = newProgress
-        println(progress.value)
     }
 
 }

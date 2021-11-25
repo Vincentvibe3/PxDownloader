@@ -1,4 +1,4 @@
-package io.github.vincentvibe3.pixivdownloader
+package io.github.vincentvibe3.pixivdownloader.components
 
 import android.app.Activity
 import androidx.compose.material.*
@@ -13,15 +13,13 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun NavigationTopBar(name:String, location:String, navController: NavController,  elevate:Boolean = false){
-//    val context = LocalContext.current
     TopAppBar(backgroundColor = MaterialTheme.colors.background, elevation = if (!elevate){0.dp}else{5.dp}) {
         IconButton(onClick = {
             navController.navigate(location)
-//            (context as Activity?)?.finish()
         }) {
-            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
+            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colors.onBackground)
         }
-        Text(text = name, style = MaterialTheme.typography.h6)
+        Text(text = name, style = MaterialTheme.typography.h6, color=MaterialTheme.colors.onBackground)
     }
 }
 
@@ -32,26 +30,8 @@ fun ActivityTopBar(name:String, elevate:Boolean = false){
         IconButton(onClick = {
             (context as Activity?)?.finish()
         }) {
-            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
+            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back", tint=MaterialTheme.colors.onBackground)
         }
-        Text(text = name, style = MaterialTheme.typography.h6)
-    }
-}
-
-@ExperimentalMaterialApi
-@Composable
-fun BottomDrawerTopBar(name: String, elevate: Boolean = false, state: BottomSheetState){
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    TopAppBar(backgroundColor = MaterialTheme.colors.background, elevation = if (!elevate){0.dp}else{5.dp}) {
-        IconButton(onClick = {
-            coroutineScope.launch {
-                state.collapse()
-            }
-
-        }) {
-            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
-        }
-        Text(text = name, style = MaterialTheme.typography.h6)
+        Text(text = name, style = MaterialTheme.typography.h6, color=MaterialTheme.colors.onBackground)
     }
 }

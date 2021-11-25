@@ -15,6 +15,7 @@ import androidx.compose.material.ButtonDefaults.outlinedButtonColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.HideImage
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,30 +31,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
+import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
-
-class DownloadActivity : ComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            PixivDownloaderTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(),
-                    color = MaterialTheme.colors.background
-                ) {
-//                    Download(navController = nac)
-                }
-            }
-        }
-    }
-}
 
 @ExperimentalMaterialApi
 @Composable
-fun Submit(modalState:ModalBottomSheetState) {
+fun DownloadDialog(modalState:ModalBottomSheetState) {
     val focusManager = LocalFocusManager.current
     val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
@@ -109,18 +92,18 @@ fun Submit(modalState:ModalBottomSheetState) {
         )
         Row(
             modifier = Modifier.padding(10.dp)
-                .alpha(if(false){
+                .alpha(if(checkCookies()){
                     0F
                 } else {
                     1F
                 }),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            //CookieManager.getInstance().getCookie("https://www.pixiv.net")!=null){
-            println(CookieManager.getInstance().getCookie("https://www.pixiv.net"))
-            Icon(imageVector = Icons.Outlined.HideImage, contentDescription = "Back")
+            Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Back")
             Spacer(modifier = Modifier.width(10.dp))
-            Text("You are not logged in to Pixiv,\nNSFW content will not be loaded.")
+            Text(
+                "You are not logged in to Pixiv,\nNSFW content will not be loaded.",
+                style=MaterialTheme.typography.caption)
         }
         Spacer(modifier = Modifier.height(90.dp))
         Row(
@@ -149,19 +132,6 @@ fun Submit(modalState:ModalBottomSheetState) {
             ) {
                 Text(text = "Download")
             }
-        }
-    }
-}
-
-@ExperimentalMaterialApi
-@Composable
-fun Download(navController: BottomSheetState) {
-    PixivDownloaderTheme {
-        Scaffold(topBar = {
-            BottomDrawerTopBar(name = "New Download", false, navController)
-        }
-        ){
-//            Submit()
         }
     }
 }
