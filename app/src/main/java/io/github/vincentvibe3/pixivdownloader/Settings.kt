@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import io.github.vincentvibe3.pixivdownloader.components.NavigationTopBar
 import io.github.vincentvibe3.pixivdownloader.components.SettingItem
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
+import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -77,7 +78,6 @@ fun NSFW(loggedInState: State<Boolean?>){
 fun Setting(loggedIn: MutableLiveData<Boolean>, loggedInState: State<Boolean?>, navController:NavController) {
     PixivDownloaderTheme {
         val context = LocalContext.current
-        val logInDialog = remember { mutableStateOf(false) }
         Scaffold(topBar = {
            NavigationTopBar(name = "Settings", location = "home",navController = navController)
 
@@ -89,7 +89,9 @@ fun Setting(loggedIn: MutableLiveData<Boolean>, loggedInState: State<Boolean?>, 
                 horizontalAlignment = Alignment.Start) {
                 SettingItem(
                     name = "Enable NSFW",
-                    onClick = {logInDialog.value = true},
+                    onClick = {
+                        val intent = Intent(context, LoginActivity::class.java)
+                        ContextCompat.startActivity(context, intent, Bundle.EMPTY)},
                     description = "Enable downloading of NSFW content",
                     enable = loggedInState.value?.not()
                 ) {
@@ -101,39 +103,10 @@ fun Setting(loggedIn: MutableLiveData<Boolean>, loggedInState: State<Boolean?>, 
                     name = "Logout",
                     onClick = {
                         CookieManager.getInstance().removeAllCookies(null)
-                        loggedIn.value = false },
+                        loggedIn.value = checkCookies()},
                     description = "Logout of Pixiv to disable NSFW downloading",
                     enable = loggedInState.value,
                     titleColor = Color(0xFFF25A5F)
-                )
-            }
-            if (logInDialog.value) {
-                AlertDialog(
-                    onDismissRequest = { logInDialog.value = false },
-                    title = { Text(text = "Enable NSFW?") },
-                    text = {
-                        Text("You will have to log in to Pixiv in the next step.\nOnce logged in you can close the browser.")
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                val intent = Intent(context, LoginActivity::class.java)
-                                ContextCompat.startActivity(context, intent, Bundle.EMPTY)
-                                logInDialog.value = false
-                            }
-                        ) {
-                            Text("Continue")
-                        }
-                    },
-                    dismissButton = {
-                        OutlinedButton(
-                            onClick = {
-                                logInDialog.value = false
-                            }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
                 )
             }
 

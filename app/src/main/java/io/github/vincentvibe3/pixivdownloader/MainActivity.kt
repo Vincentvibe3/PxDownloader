@@ -1,8 +1,6 @@
 package io.github.vincentvibe3.pixivdownloader
 
-import android.content.Intent
 import android.os.Bundle
-import android.webkit.CookieManager
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -42,7 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             PixivDownloaderTheme {
                 // A surface container using the 'background' color from the theme
-                var loggedIn = loggedInState.observeAsState()
+                val loggedIn = loggedInState.observeAsState()
                 Surface(color = MaterialTheme.colors.background) {
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "home" ){
@@ -50,7 +47,7 @@ class MainActivity : ComponentActivity() {
                             Setting(loggedIn = loggedInState, loggedInState = loggedIn, navController)
                         }
                         composable("home"){
-                            DefaultPreview(navController = navController)
+                            Home(navController = navController)
                         }
                     }
                 }
@@ -67,9 +64,8 @@ class MainActivity : ComponentActivity() {
 
 @ExperimentalComposeUiApi
 @ExperimentalMaterialApi
-@Preview(showBackground = true)
 @Composable
-fun DefaultPreview(navController:NavController) {
+fun Home(navController:NavController) {
     PixivDownloaderTheme {
         val focusManager = LocalFocusManager.current
         val downloadSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden, confirmStateChange = {
