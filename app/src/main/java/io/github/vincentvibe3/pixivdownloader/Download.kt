@@ -30,7 +30,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.android.volley.toolbox.Volley
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
+import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
@@ -40,6 +42,7 @@ fun DownloadDialog(modalState:ModalBottomSheetState) {
     val focusManager = LocalFocusManager.current
     val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
+    val requestQueue = Volley.newRequestQueue(LocalContext.current)
     BackHandler(enabled = modalState.isVisible) {
         focusManager.clearFocus()
         textState.value = TextFieldValue()
@@ -127,6 +130,13 @@ fun DownloadDialog(modalState:ModalBottomSheetState) {
             Button(
                 onClick = {
                     focusManager.clearFocus()
+                    val url = textState.value.text
+                    coroutineScope.launch {
+                        "93767828"
+                        if (url!=""){
+                            PixivMetadata.getUgoiraData(url, requestQueue)
+                        }
+                    }
                     textState.value = TextFieldValue()
                 },
             ) {
