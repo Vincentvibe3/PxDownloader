@@ -1,18 +1,22 @@
 package io.github.vincentvibe3.pixivdownloader.utils
 
-import android.annotation.SuppressLint
 import android.app.DownloadManager
-import android.app.NotificationManager
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.webkit.CookieManager
-import com.android.volley.Request
 import com.android.volley.RequestQueue
-import com.android.volley.toolbox.StringRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.zip.ZipInputStream
 
 object Download {
+
+    val pendingDownloads = HashMap<Long, String>()
 
     val headers:HashMap<String, String> = hashMapOf(
         "Referer" to  "https://www.pixiv.net/",
@@ -46,7 +50,28 @@ object Download {
         }
     }
 
-    @SuppressLint("Range")
+    fun unzip(file:File, id:String){
+        val target = "${Environment.getDownloadCacheDirectory()}/id"
+        File(target).mkdir()
+        val zis = ZipInputStream(FileInputStream(file))
+        var next = zis.nextEntry
+        val buffer = ByteArray(1024)
+        while (next!=null){
+            val dest = File("$target/${next.name}")
+            dest.delete()
+            val out = FileOutputStream(dest)
+            while (zis.read(buffer) > 0){
+                out.write(buffer, 0, buffer.size)
+            }
+            out.close()
+            next = zis.nextEntry
+        }
+        zis.closeEntry()
+        zis.close()
+        file.delete()
+        print("unzipped DownloadManager output")
+    }
+
     private fun getZip(url:String, id: String, context: Context){
         println(url)
         val downloadRequest = DownloadManager.Request(Uri.parse(url))
@@ -69,9 +94,12 @@ object Download {
         val dlId = dlManager.enqueue(downloadRequest)
         val query = DownloadManager.Query().setFilterById(dlId)
         val cursor = dlManager.query(query)
+        pendingDownloads[dlId] = id
         cursor.moveToFirst()
-        println(dlId)
-        println(cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)))
+        println("DownloadManager ${context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath}")
+        println("DownloadManager $dlId")
+        val colIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+        println("DownloadManager ${cursor.getInt(colIndex)}")
 
 
     }

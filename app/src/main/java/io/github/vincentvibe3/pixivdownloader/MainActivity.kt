@@ -1,9 +1,12 @@
 package io.github.vincentvibe3.pixivdownloader
 
+import android.app.DownloadManager
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
@@ -19,11 +22,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
+import io.github.vincentvibe3.pixivdownloader.utils.DownloadCompletion
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
@@ -32,22 +37,25 @@ class MainActivity : ComponentActivity() {
 
     private val loggedInState:MutableLiveData<Boolean> = MutableLiveData(checkCookies())
 
+    val model:AppViewModel by viewModels()
+
     @ExperimentalComposeUiApi
     @ExperimentalMaterialApi
     override fun onCreate(savedInstanceState: Bundle?) {
+        registerReceiver(DownloadCompletion(), IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         super.onCreate(savedInstanceState)
         setContent {
             PixivDownloaderTheme {
                 // A surface container using the 'background' color from the theme
-                val loggedIn = loggedInState.observeAsState()
+                val loggedIn = model.loginStatus.observeAsState()
                 Surface(color = MaterialTheme.colors.background) {
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "home" ){
                         composable("Settings"){
-                            Setting(loggedIn = loggedInState, loggedInState = loggedIn, navController)
+                            Settings(model, loggedIn = loggedIn, loggedInState = loggedIn, navController)
                         }
                         composable("home"){
-                            Home(navController = navController)
+                            Home(loggedIn, navController = navController)
                         }
                     }
                 }
@@ -57,7 +65,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        loggedInState.value = checkCookies()
+        model.loginStatus.value = checkCookies()
+    }
+
+    override fun onPause() {
+        super.onPause()
     }
 
 }
@@ -65,7 +77,7 @@ class MainActivity : ComponentActivity() {
 @ExperimentalComposeUiApi
 @ExperimentalMaterialApi
 @Composable
-fun Home(navController:NavController) {
+fun Home(loggedIn:State<Boolean?>, navController:NavController) {
     PixivDownloaderTheme {
         val focusManager = LocalFocusManager.current
         val downloadSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden, confirmStateChange = {
@@ -81,7 +93,7 @@ fun Home(navController:NavController) {
             sheetBackgroundColor = MaterialTheme.colors.background,
             scrimColor = Color(0x90000000),
             sheetContent = {
-                DownloadDialog(downloadSheetState)
+                DownloadDialog(loggedIn,downloadSheetState)
 
         }) {
 

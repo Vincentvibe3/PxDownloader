@@ -16,10 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.HideImage
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,7 +27,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.volley.toolbox.Volley
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.Download
@@ -37,9 +37,20 @@ import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterialApi::class)
+@Preview
+@Composable
+fun DlDialogPreview(){
+    val downloadSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Expanded, confirmStateChange = {
+        true
+    })
+    val loggedIn = remember {mutableStateOf(false)}
+    DownloadDialog(loggedIn = loggedIn, modalState = downloadSheetState)
+}
+
 @ExperimentalMaterialApi
 @Composable
-fun DownloadDialog(modalState:ModalBottomSheetState) {
+fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
     val focusManager = LocalFocusManager.current
     val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
@@ -79,10 +90,7 @@ fun DownloadDialog(modalState:ModalBottomSheetState) {
 
         OutlinedTextField(
             modifier = Modifier
-                .fillMaxWidth()
-                .onFocusChanged {
-                    println(it.isFocused)
-                },
+                .fillMaxWidth(),
             value = textState.value,
             label = {
                 Text(text = "Pixiv Artwork URL")
@@ -96,12 +104,15 @@ fun DownloadDialog(modalState:ModalBottomSheetState) {
             )
         )
         Row(
-            modifier = Modifier.padding(10.dp)
-                .alpha(if(checkCookies()){
-                    0F
-                } else {
-                    1F
-                }),
+            modifier = Modifier
+                .padding(10.dp)
+                .alpha(
+                    if (loggedIn.value == true) {
+                        0F
+                    } else {
+                        1F
+                    }
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Back")

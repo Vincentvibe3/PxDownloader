@@ -27,7 +27,9 @@ import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.CustomChromeClient
 
 import androidx.compose.foundation.layout.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.vincentvibe3.pixivdownloader.components.ActivityTopBar
+import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 
 
 class LoginActivity : ComponentActivity() {

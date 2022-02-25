@@ -14,7 +14,6 @@ object PixivMetadata {
     val dataPool = ConcurrentHashMap<String, Pair<Boolean, String?>>()
 
     suspend fun getUgoiraData(id:String, queue:RequestQueue): String? {
-        lateinit var responseText: Pair<Boolean, String?>
         val request = StringRequest(Request.Method.GET,
             "https://www.pixiv.net/ajax/illust/$id/ugoira_meta",
             {

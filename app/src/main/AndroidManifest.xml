@@ -33,18 +33,12 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.PixivDownloader.NoActionBar">
         </activity>
-        <activity
-            android:name=".DownloadActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.PixivDownloader.NoActionBar">
-        </activity>
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.PixivDownloader.NoActionBar">
-        </activity>
+        <receiver android:name=".utils.DownloadCompletion">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE"/>
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
