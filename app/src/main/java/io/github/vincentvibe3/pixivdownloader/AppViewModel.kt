@@ -1,6 +1,5 @@
 package io.github.vincentvibe3.pixivdownloader
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
@@ -13,7 +12,6 @@ class AppViewModel: ViewModel() {
 
     suspend fun startDownload(id:String){
         withContext(Dispatchers.IO){
-
         }
     }
 

@@ -43,11 +43,11 @@ fun Settings(model:AppViewModel, loggedIn:State<Boolean?>, loggedInState: State<
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.Start) {
                 SettingItem(
-                    name = "Enable NSFW",
+                    name = "Log In",
                     onClick = {
                         val intent = Intent(context, LoginActivity::class.java)
                         ContextCompat.startActivity(context, intent, Bundle.EMPTY)},
-                    description = "Enable downloading of NSFW content",
+                    description = "Enables downloading NSFW art",
                     enable = loggedIn.value?.not()
                 ) {
                     if (loggedIn.value==true){

@@ -1,35 +1,28 @@
 package io.github.vincentvibe3.pixivdownloader.utils
 
 import android.content.Context
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
-import kotlinx.coroutines.delay
+import android.util.Log
+import android.webkit.CookieManager
+import io.github.vincentvibe3.pixivdownloader.serialization.UgoiraData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import okhttp3.*
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 object PixivMetadata {
 
-    val dataPool = ConcurrentHashMap<String, Pair<Boolean, String?>>()
+    val PendingRequests = HashMap<String, String>()
 
-    suspend fun getUgoiraData(id:String, queue:RequestQueue): String? {
-        val request = StringRequest(Request.Method.GET,
-            "https://www.pixiv.net/ajax/illust/$id/ugoira_meta",
-            {
-                dataPool[id] = Pair(true, it)
-            },
-            {
-                dataPool[id] = Pair(false, it.message)
+    suspend fun fetchNext(id:String, context: Context){
+        withContext(Dispatchers.IO){
+            val data = PendingRequests[id]?.let { Json.decodeFromString<UgoiraData>(it) }
+            PendingRequests.remove(id)
+            if (data != null) {
+                Download.getZip(id, data, context)
             }
-        )
-        queue.add(request)
-        while (!dataPool.containsKey(id)){
-            delay(10L)
         }
-        println(dataPool[id]?.second)
-        return dataPool[id]?.second
     }
-
-
 }

@@ -1,6 +1,7 @@
 package io.github.vincentvibe3.pixivdownloader
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
@@ -29,11 +30,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.volley.toolbox.Volley
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.Download
 import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
+import io.github.vincentvibe3.pixivdownloader.utils.VideoGenerator
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
@@ -54,7 +56,6 @@ fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
     val focusManager = LocalFocusManager.current
     val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
-    val requestQueue = Volley.newRequestQueue(LocalContext.current)
     val context = LocalContext.current
     BackHandler(enabled = modalState.isVisible) {
         focusManager.clearFocus()
@@ -118,7 +119,7 @@ fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
             Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Back")
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                "You are not logged in to Pixiv,\nNSFW content will not be loaded.",
+                "You are not logged in to Pixiv,\nLog in to access NSFW content.",
                 style=MaterialTheme.typography.caption)
         }
         Spacer(modifier = Modifier.height(90.dp))
@@ -144,12 +145,9 @@ fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
                 onClick = {
                     focusManager.clearFocus()
                     val url = textState.value.text
-                    coroutineScope.launch {
-                        "93767828"
-//                        if (url!=""){
-                            Download.download("93767828", requestQueue, context)
-//                        }
-                    }
+                    val intent = Intent(context, WebViewDownload::class.java)
+                    intent.putExtra("id", "96574764")
+                    ContextCompat.startActivity(context, intent, Bundle.EMPTY)
                     textState.value = TextFieldValue()
                 },
             ) {

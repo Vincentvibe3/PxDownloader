@@ -34,13 +34,23 @@ fun SettingItem(
             ),
         color = Color.Transparent
     ) {
-        Row(modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth()
             .padding(24.dp, 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically) {
-            Column() {
-                Text(text = name, color=titleColor, fontWeight = FontWeight.Bold)
-                Text(text = description, color=Color.Gray, style=MaterialTheme.typography.caption)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = name,
+                    color=titleColor,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = description,
+                    color=Color.Gray,
+                    style=MaterialTheme.typography.caption
+                )
             }
             indicator()
         }

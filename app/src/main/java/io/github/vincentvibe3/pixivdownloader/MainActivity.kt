@@ -1,6 +1,9 @@
 package io.github.vincentvibe3.pixivdownloader
 
 import android.app.DownloadManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.IntentFilter
 import android.os.Bundle
 import androidx.compose.runtime.livedata.observeAsState
@@ -15,22 +18,20 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
-import io.github.vincentvibe3.pixivdownloader.utils.DownloadCompletion
+import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 
 class MainActivity : ComponentActivity() {
@@ -39,11 +40,25 @@ class MainActivity : ComponentActivity() {
 
     val model:AppViewModel by viewModels()
 
-    @ExperimentalComposeUiApi
-    @ExperimentalMaterialApi
+    private fun createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        val name = getString(R.string.notif_name)
+        val descriptionText = getString(R.string.notif_name)
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(name, name, importance).apply {
+            description = descriptionText
+        }
+        // Register the channel with the system
+        val notificationManager: NotificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        registerReceiver(DownloadCompletion(), IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         super.onCreate(savedInstanceState)
+        createNotificationChannel()
         setContent {
             PixivDownloaderTheme {
                 // A surface container using the 'background' color from the theme
@@ -66,6 +81,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         model.loginStatus.value = checkCookies()
+        if (PixivMetadata.PendingRequests.isNotEmpty()){
+            for (req in PixivMetadata.PendingRequests){
+                val context = this.applicationContext
+                runBlocking {
+                    PixivMetadata.fetchNext(req.key, context)
+                }
+            }
+        }
     }
 
     override fun onPause() {
@@ -74,8 +97,7 @@ class MainActivity : ComponentActivity() {
 
 }
 
-@ExperimentalComposeUiApi
-@ExperimentalMaterialApi
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun Home(loggedIn:State<Boolean?>, navController:NavController) {
     PixivDownloaderTheme {

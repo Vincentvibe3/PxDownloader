@@ -1,57 +1,104 @@
 package io.github.vincentvibe3.pixivdownloader.utils
 
-import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.webkit.CookieManager
-import com.android.volley.RequestQueue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat.startActivity
+import io.github.vincentvibe3.pixivdownloader.R
+import io.github.vincentvibe3.pixivdownloader.serialization.UgoiraData
+import okhttp3.*
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.zip.ZipInputStream
 
+
 object Download {
+
+    val client = OkHttpClient()
 
     val pendingDownloads = HashMap<Long, String>()
 
     val headers:HashMap<String, String> = hashMapOf(
-        "Referer" to  "https://www.pixiv.net/",
-        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0",
-        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language" to "en-CA,en-US;q=0.7,en;q=0.3",
-        "Accept-Encoding" to "gzip, deflate, br",
-        "DNT" to "1",
-        "Connection" to "keep-alive",
-        "Upgrade-Insecure-Requests" to "1",
-        "Sec-Fetch-Dest" to "document",
-        "Sec-Fetch-Mode" to "navigate",
-        "Sec-Fetch-Site" to "none",
-        "Sec-Fetch-User" to "?1",
-        "Sec-GPC" to "1",
-        "Cache-Control" to "max-age=0",
-        "TE" to "trailers"
+            "Host" to "i.pximg.net",
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0",
+            "Accept" to "*/*",
+            "Accept-Language" to "en-US,en;q=0.5",
+            "Accept-Encoding" to "gzip, deflate, br",
+            "Referer" to "https://www.pixiv.net/",
+            "Origin" to "https://www.pixiv.net",
+            "DNT" to "1",
+            "Connection" to "keep-alive",
+            "Sec-Fetch-Dest" to "empty",
+            "Sec-Fetch-Mode" to "cors",
+            "Sec-Fetch-Site" to "cross-site",
+            "Sec-GPC" to "1",
+            "TE" to "trailers",
     )
 
-    suspend fun download(id:String, queue: RequestQueue, context: Context){
-        val ugoiraMetadata = PixivMetadata.getUgoiraData(id, queue)
-        if (ugoiraMetadata!=null){
-            val jsonData = JSONObject(ugoiraMetadata)
-            val error = jsonData.getBoolean("error")
-            println(error)
-            if (!error){
-                val body = jsonData.getJSONObject("body")
-                val imagesZip = body.getString("originalSrc")
-                getZip(imagesZip, id, context)
-            }
+    fun getZip(id: String, data:UgoiraData, context: Context){
+        val url = data.body.src
+        val headerBuilder = Headers.Builder()
+        for (header in headers){
+            headerBuilder.add(header.key, header.value)
         }
+        val cookie = CookieManager.getInstance().getCookie("https://www.pixiv.net")
+        if (cookie!=null){
+            headerBuilder.add("Cookie", cookie)
+        }
+        println(cookie)
+        println(url)
+        val dlHeaders = headerBuilder.build()
+        val request = Request.Builder()
+            .url(url)
+            .headers(dlHeaders)
+            .build()
+        client.newCall(request).enqueue(object : Callback{
+            override fun onFailure(call: Call, e: IOException) {
+                println("Download Failed")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful){
+                    val bytes = response.body?.byteStream()
+                    val file = File("${context.cacheDir.absolutePath}/$id.zip")
+                    val outputStream = FileOutputStream(file)
+                    val byteArray = ByteArray(1024)
+                    if (bytes != null) {
+                        while (true){
+                            val read = bytes.read(byteArray)
+                            if (read!=-1){
+                                outputStream.write(byteArray, 0, read);
+                            } else {
+                                break
+                            }
+                        }
+                    }
+                    var builder = NotificationCompat.Builder(context, "Downloads")
+                        .setSmallIcon(R.drawable.download_icon)
+                        .setContentTitle("Download")
+                        .setContentText("Download Complete")
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    with(NotificationManagerCompat.from(context)) {
+                        notify(id.toInt(), builder.build())
+                    }
+                    unzip(file, id, context)
+                    VideoGenerator().generate("${context.cacheDir.absolutePath}/$id", data)
+
+                }
+
+            }
+
+        })
     }
 
-    fun unzip(file:File, id:String){
-        val target = "${Environment.getDownloadCacheDirectory()}/id"
+    fun unzip(file:File, id:String, context: Context){
+        val target = "${context.cacheDir.absolutePath}/$id"
         File(target).mkdir()
         val zis = ZipInputStream(FileInputStream(file))
         var next = zis.nextEntry
@@ -69,39 +116,6 @@ object Download {
         zis.closeEntry()
         zis.close()
         file.delete()
-        print("unzipped DownloadManager output")
-    }
-
-    private fun getZip(url:String, id: String, context: Context){
-        println(url)
-        val downloadRequest = DownloadManager.Request(Uri.parse(url))
-        for (header in headers.keys){
-            downloadRequest.addRequestHeader(header, headers[header])
-            println(header)
-        }
-        var cookies = CookieManager.getInstance().getCookie("https://www.pixiv.net")
-        cookies = cookies ?: ""
-        println("$cookies download")
-        downloadRequest.addRequestHeader("Cookie", cookies)
-            .setTitle("Pixiv $id")
-            .setDescription("Downloading $id")
-            .setNotificationVisibility(0)
-            .setRequiresCharging(false)
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(true)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "$id.zip")
-        val dlManager = (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager)
-        val dlId = dlManager.enqueue(downloadRequest)
-        val query = DownloadManager.Query().setFilterById(dlId)
-        val cursor = dlManager.query(query)
-        pendingDownloads[dlId] = id
-        cursor.moveToFirst()
-        println("DownloadManager ${context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath}")
-        println("DownloadManager $dlId")
-        val colIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-        println("DownloadManager ${cursor.getInt(colIndex)}")
-
-
     }
 
 }
