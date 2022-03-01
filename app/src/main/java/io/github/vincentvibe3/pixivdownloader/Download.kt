@@ -95,6 +95,7 @@ fun DownloadDialog(
                 }
             )
         )
+        Spacer(modifier = Modifier.height(10.dp))
         OutlinedButton(
             onClick = {
                       fieldText.value = "${fieldText.value}${checkClipboard(context)?:""}"
@@ -105,6 +106,7 @@ fun DownloadDialog(
         ) {
             Text("Paste from clipboard")
         }
+        Spacer(modifier = Modifier.height(10.dp))
         Row(
             modifier = Modifier
                 .padding(10.dp)
@@ -123,10 +125,10 @@ fun DownloadDialog(
                 "You are not logged in to Pixiv,\nLog in to access NSFW content.",
                 style=MaterialTheme.typography.caption)
         }
-        Spacer(modifier = Modifier.height(90.dp))
+        Spacer(modifier = Modifier.height(40.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             OutlinedButton(
                 onClick = {

@@ -164,8 +164,6 @@ class VideoGenerator {
         format.setLong(MediaFormat.KEY_DURATION, 1)
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 15)
         val encoder = MediaCodec.createByCodecName(encoderMime)
-        println(width)
-        println(height)
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         val surface = encoder.createInputSurface()
 
