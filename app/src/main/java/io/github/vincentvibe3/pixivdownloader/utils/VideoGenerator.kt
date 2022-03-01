@@ -1,8 +1,13 @@
 package io.github.vincentvibe3.pixivdownloader.utils
 
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.media.*
 import android.opengl.*
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import io.github.vincentvibe3.pixivdownloader.R
 import io.github.vincentvibe3.pixivdownloader.serialization.UgoiraData
 import java.io.File
 import java.nio.ByteBuffer
@@ -10,7 +15,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
-
+//adapted from https://www.sisik.eu/blog/android/media/images-to-video
 class VideoGenerator {
 
     private var presentationTimeUs = 0L
@@ -75,7 +80,7 @@ class VideoGenerator {
         }
     }
 
-    fun initGl() {
+    private fun initGl() {
         val vertexShader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER).also { shader ->
             GLES20.glShaderSource(shader, vertexShaderCode)
             GLES20.glCompileShader(shader)
@@ -114,20 +119,53 @@ class VideoGenerator {
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
     }
 
-    fun generate(files:String, data:UgoiraData){
+    var width = -1
+    var height = -1
+
+    fun generate(files:String, data:UgoiraData, dest:String, id:String, context:Context):Boolean{
+        val fileCount = File("${context.cacheDir.absolutePath}/$id").listFiles()?.size ?: return false
+        var videoBuildNotif = NotificationCompat.Builder(context, "Downloads")
+            .setSmallIcon(R.drawable.download_icon)
+            .setContentTitle("Generating $id.webm")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+
         val dir = File(files)
         val images = dir.listFiles()
         images?.sort()
-        val muxer = MediaMuxer("$files/output.webm", MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM)
-        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_VP8, 600, 600)
-        format.setInteger(MediaFormat.KEY_BIT_RATE, 2000000);
+        images ?: return false
+        val bmp = BitmapFactory.decodeFile(images.first().absolutePath)
+        val muxer = MediaMuxer("$dest/$id.webm", MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM)
+        val roundInitWidth = bmp.width/10*10
+        val roundInitHeight = bmp.height/10*10
+        val queryFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_VP8, 600, 600)
+        queryFormat.setInteger(MediaFormat.KEY_BIT_RATE, 10000000)
+        queryFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+            MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+        queryFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+        queryFormat.setLong(MediaFormat.KEY_DURATION, 1)
+        queryFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 15)
+        val encoderMime = MediaCodecList(MediaCodecList.ALL_CODECS).findEncoderForFormat(queryFormat)
+        width = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos
+            .first { it.name==encoderMime }
+            .getCapabilitiesForType("video/x-vnd.on2.vp8")
+            .videoCapabilities.supportedWidths.clamp(roundInitWidth)
+        height = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos
+            .first { it.name==encoderMime }
+            .getCapabilitiesForType("video/x-vnd.on2.vp8")
+            .videoCapabilities.getSupportedHeightsFor(width).clamp(roundInitHeight)
+
+        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_VP8, width, height)
+        format.setInteger(MediaFormat.KEY_BIT_RATE, 10000000)
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-            MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-        format.setLong(MediaFormat.KEY_DURATION, 1);
-        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 15);
-        val encoderMime = MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(format)
+            MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+        format.setLong(MediaFormat.KEY_DURATION, 1)
+        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 15)
         val encoder = MediaCodec.createByCodecName(encoderMime)
+        println(width)
+        println(height)
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         val surface = encoder.createInputSurface()
 
@@ -180,23 +218,33 @@ class VideoGenerator {
         initGl()
         encoder.start()
 
-        for (image in images!!) {
-            val frame = data.body.frames.first { it.file == image.name }
+        var progress = 0
+        for (image in images) {
+            with(NotificationManagerCompat.from(context)) {
+                notify(id.toInt(), videoBuildNotif
+                    .setProgress(fileCount, progress, false)
+                    .setContentText("Processing ${image.name}")
+                    .build())
+            }
+            val frame = data.body!!.frames.first { it.file == image.name }
             presentationTimeUs += frame.delay*1000L
             val filePath = image.absolutePath
-            println(filePath)
-            println("draining")
+            Log.i("Encoder", "Draining")
             // Get encoded data and feed it to muxer
             drainEncoder(encoder, muxer, false)
-            println("rendering")
+            Log.i("Encoder", "Rendering")
             // Render the bitmap/texture with OpenGL here
-            render(filePath)
-            println("timestamp")
+            val rendered = render(filePath)
+            if (!rendered){
+                return false
+            }
+            Log.i("Encoder", "EGL Timestamp")
             // Set timestamp with EGL extension
             EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, presentationTimeUs * 1000)
-            println("feeding")
+            Log.i("Encoder", "Swapping Buffers")
             // Feed encoder with next frame produced by OpenGL
             EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+            progress++
         }
 
 // Drain last encoded data and finalize the video file
@@ -211,22 +259,22 @@ class VideoGenerator {
             EGL14.eglDestroySurface(eglDisplay, eglSurface)
             EGL14.eglDestroyContext(eglDisplay, eglContext)
             EGL14.eglReleaseThread()
-            EGL14.eglTerminate(eglDisplay);
+            EGL14.eglTerminate(eglDisplay)
         }
-        surface.release();
+        surface.release()
         eglDisplay = EGL14.EGL_NO_DISPLAY
         eglContext = EGL14.EGL_NO_CONTEXT
         eglSurface = EGL14.EGL_NO_SURFACE
-        println("done")
+        return true
 
 
     }
 
-    fun render(imagePath:String){
+    private fun render(imagePath:String):Boolean{
         // Load bitmap from file
-        val bitmap = BitmapFactory.decodeFile(imagePath)
+        val bitmap = BitmapFactory.decodeFile(imagePath) ?: return false
 
-// Prepare some transformations
+        // Prepare some transformations
         val mvp = FloatArray(16)
         Matrix.setIdentityM(mvp, 0)
         Matrix.scaleM(mvp, 0, 1f, -1f, 1f)
@@ -234,7 +282,7 @@ class VideoGenerator {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         GLES20.glClearColor(0f, 0f, 0f, 0f)
 
-        GLES20.glViewport(0, 0, 600, 600)
+        GLES20.glViewport(0, 0, bitmap.width, bitmap.height)
 
         GLES20.glUseProgram(program)
 
@@ -263,25 +311,22 @@ class VideoGenerator {
         GLES20.glVertexAttribPointer(uvsHandle, 2, GLES20.GL_FLOAT, false, 4 * 5, 3 * 4)
 
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_INT, 0)
+        return true
     }
 
-    fun drainEncoder(encoder: MediaCodec, muxer: MediaMuxer, endOfStream: Boolean) {
-        println("drain started")
+    private fun drainEncoder(encoder: MediaCodec, muxer: MediaMuxer, endOfStream: Boolean) {
         if (endOfStream)
             encoder.signalEndOfInputStream()
 
         while (true) {
             val bufferInfo = MediaCodec.BufferInfo()
             val outBufferId = encoder.dequeueOutputBuffer(bufferInfo, 1000000)
-            println(outBufferId)
             if (outBufferId >= 0) {
-                println("$presentationTimeUs prestime")
                 val encodedBuffer = encoder.getOutputBuffer(outBufferId)
 
                 // MediaMuxer is ignoring KEY_FRAMERATE, so I set it manually here
                 // to achieve the desired frame rate
                 bufferInfo.presentationTimeUs = presentationTimeUs
-                println("$encodedBuffer buffer")
                 if (encodedBuffer != null) {
                     muxer.writeSampleData(trackIndex, encodedBuffer, bufferInfo)
                 }

@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">PixivDownloader</string>
     <string name="notif_name">Downloads</string>
-    <string name="notif_description">Download Status</string>
 </resources>

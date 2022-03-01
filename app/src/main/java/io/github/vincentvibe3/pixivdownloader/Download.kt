@@ -1,42 +1,26 @@
 package io.github.vincentvibe3.pixivdownloader
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.view.inputmethod.InputMethodManager
-import android.webkit.CookieManager
-import androidx.activity.ComponentActivity
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.*
 import androidx.compose.material.ButtonDefaults.outlinedButtonColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.HideImage
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
-import io.github.vincentvibe3.pixivdownloader.utils.Download
-import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
-import io.github.vincentvibe3.pixivdownloader.utils.VideoGenerator
-import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -52,7 +36,10 @@ fun DlDialogPreview(){
 
 @ExperimentalMaterialApi
 @Composable
-fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
+fun DownloadDialog(
+    loggedIn: State<Boolean?>,
+    modalState: ModalBottomSheetState,
+) {
     val focusManager = LocalFocusManager.current
     val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
@@ -94,9 +81,10 @@ fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
                 .fillMaxWidth(),
             value = textState.value,
             label = {
-                Text(text = "Pixiv Artwork URL")
+                Text(text = "Pixiv Artwork URL or Id")
             },
             singleLine = true,
+            isError = getInputId(textState.value.text) == null && textState.value.text.isNotBlank(),
             onValueChange = { textState.value = it },
             keyboardActions = KeyboardActions(
                 onDone = {
@@ -142,17 +130,42 @@ fun DownloadDialog(loggedIn:State<Boolean?>, modalState:ModalBottomSheetState) {
             }
             Spacer(modifier = Modifier.width(10.dp))
             Button(
+                enabled = !getInputId(textState.value.text).isNullOrBlank(),
                 onClick = {
                     focusManager.clearFocus()
                     val url = textState.value.text
-                    val intent = Intent(context, WebViewDownload::class.java)
-                    intent.putExtra("id", "96574764")
-                    ContextCompat.startActivity(context, intent, Bundle.EMPTY)
-                    textState.value = TextFieldValue()
+                    val input = getInputId(url)
+                    if (input!=null){
+                        val intent = Intent(context, WebViewDownload::class.java)
+                        intent.putExtra("id", input)
+                        ContextCompat.startActivity(context, intent, Bundle.EMPTY)
+                        textState.value = TextFieldValue()
+                    } else {
+                        val toast = Toast.makeText(context, "Invalid link", Toast.LENGTH_SHORT)
+                        toast.show()
+                    }
+                    coroutineScope.launch {
+                        modalState.hide()
+                    }
                 },
             ) {
                 Text(text = "Download")
             }
         }
+    }
+}
+
+fun getInputId(input:String):String?{
+    val pattern = "(?<=https:\\/\\/www\\.pixiv\\.net\\/en\\/artworks\\/)([0-9]+)$".toRegex()
+    val patternNosecure = "(?<=http:\\/\\/www\\.pixiv\\.net\\/en\\/artworks\\/)([0-9]+)$".toRegex()
+    val pattern2 = "^([0-9]+)$".toRegex()
+    return if (pattern.containsMatchIn(input)) {
+        input.removePrefix("https://www.pixiv.net/en/artworks/")
+    }else if (patternNosecure.containsMatchIn(input)){
+        input.removePrefix("http://www.pixiv.net/en/artworks/")
+    } else if (pattern2.matches(input)) {
+        input
+    } else {
+        null
     }
 }

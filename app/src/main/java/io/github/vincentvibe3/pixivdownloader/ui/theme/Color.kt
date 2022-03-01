@@ -2,8 +2,8 @@ package io.github.vincentvibe3.pixivdownloader.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val primaryLight = Color(0xFF456990)
-val primaryDark = Color(0xFF688DB6)
+val primaryLight = Color(0xFF2196F3)
+val primaryDark = Color(0xFF2196F3)
 val primaryAltLight = Color(0xFF375473)
 val primaryAltDark = Color(0xFF496F97)
 val secondaryLight = Color(0xFFEF767A)

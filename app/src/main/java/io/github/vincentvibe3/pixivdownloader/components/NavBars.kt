@@ -1,21 +1,30 @@
 package io.github.vincentvibe3.pixivdownloader.components
 
 import android.app.Activity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
 
 @Composable
 @Preview
 fun ActivityPreview(){
-    ActivityTopBar(name = "Lorem ipsum")
+    ActivityTopBar(name = "Lorem ipsum"){
+        TextButton(onClick = {
+
+        }) {
+            Text(text = "Download")
+        }
+    }
 }
 
 @Composable
@@ -53,7 +62,8 @@ fun NavigationTopBar(
 @Composable
 fun ActivityTopBar(
     name:String,
-    elevate:Boolean = false
+    elevate:Boolean = false,
+    action: @Composable () -> Unit = {}
 ){
     val context = LocalContext.current
     TopAppBar(
@@ -78,5 +88,14 @@ fun ActivityTopBar(
             style = MaterialTheme.typography.h6,
             color=MaterialTheme.colors.onBackground
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            action()
+        }
+
+
     }
 }

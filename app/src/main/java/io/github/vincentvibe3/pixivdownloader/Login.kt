@@ -27,9 +27,7 @@ import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.CustomChromeClient
 
 import androidx.compose.foundation.layout.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.vincentvibe3.pixivdownloader.components.ActivityTopBar
-import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 
 
 class LoginActivity : ComponentActivity() {
@@ -59,7 +57,7 @@ fun Login(){
                 .fillMaxWidth()
                 .fillMaxHeight(),
             topBar = {
-                ActivityTopBar(name = "Login", true)
+                ActivityTopBar(name = "Login", true, {})
             },
             backgroundColor = colorResource(id = R.color.white)
         ) {
@@ -76,7 +74,7 @@ fun Login(){
                     val settings = this.settings
                     settings.javaScriptEnabled = true
                     settings.userAgentString =
-                        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36"
+                        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.101 Mobile Safari/537.36"
                     this.settings.loadWithOverviewMode = true
                     this.settings.useWideViewPort = true
                     CookieManager.getInstance().setAcceptCookie(true)

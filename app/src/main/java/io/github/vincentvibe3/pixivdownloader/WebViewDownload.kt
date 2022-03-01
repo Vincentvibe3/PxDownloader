@@ -11,22 +11,13 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -42,10 +33,9 @@ class WebViewDownload : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val bundle = intent.extras
-        val id = bundle!!.getString("id")!!
+        val id = bundle?.getString("id")
         setContent {
             PixivDownloaderTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     color = colorResource(R.color.white)
                 ) {
@@ -56,34 +46,52 @@ class WebViewDownload : ComponentActivity() {
     }
 }
 
-/* An instance of this class will be registered as a JavaScript interface */
-internal class HtmlInterceptor(val id:String) {
+internal class HtmlInterceptor(private val id: MutableState<String?>) {
     @JavascriptInterface
     fun processHTML(html: String?) {
-        println("html $html")
-        if (html != null) {
-            PixivMetadata.PendingRequests[id] = html
+        val idValue = id.value
+        if (html != null && idValue != null) {
+            PixivMetadata.PendingRequests[idValue] = html
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebViewDl(id:String){
+fun WebViewDl(initId:String?){
+    val id = remember {mutableStateOf(initId)}
+    var webView:MutableState<WebView>? = null
     PixivDownloaderTheme {
         Scaffold (
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(),
             topBar = {
-                ActivityTopBar(name = "Fetch Data", true)
+                ActivityTopBar(
+                    name = if (id.value == null) {"Browse"} else {"Fetch Data"},
+                    elevate = true
+                ) {
+                    if (id.value == null) {
+                        TextButton(onClick = {
+                            id.value = webView?.value?.url?.let { getInputId(it) }
+                            val idVal = id.value
+                        }) {
+                            Text(text = "Download")
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                    }
+                }
             },
             backgroundColor = colorResource(id = R.color.white)
         ) {
             val progress = remember { mutableStateOf(0) }
             val context = LocalContext.current
-            val url = "https://www.pixiv.net/ajax/illust/$id/ugoira_meta"
-            val webView = remember {
+            val url = if (id.value==null){
+                "https://www.pixiv.net"
+            } else {
+                "https://www.pixiv.net/ajax/illust/${id.value}/ugoira_meta"
+            }
+            webView = remember {
                 mutableStateOf(WebView(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -93,8 +101,11 @@ fun WebViewDl(id:String){
                     webViewClient = object:WebViewClient(){
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            this@apply.loadUrl("javascript:window.HTMLOUT.processHTML(document.getElementsByTagName('pre')[0].textContent);");
-                            (context as Activity).finish()
+                            if (id.value!=null&&url=="https://www.pixiv.net/ajax/illust/${id.value}/ugoira_meta"){
+                                this@apply.loadUrl("javascript:window.HTMLOUT.processHTML(document.getElementsByTagName('pre')[0].textContent);")
+                                (context as Activity).finish()
+                            }
+
                         }
                     }
                     val settings = this.settings
@@ -126,7 +137,7 @@ fun WebViewDl(id:String){
                     .fillMaxHeight(),
                 state = webProgress,
                 onRefresh = {
-                    webView.value.reload()
+                    webView!!.value.reload()
                 },
             ) {
                 Column(
@@ -141,7 +152,7 @@ fun WebViewDl(id:String){
                             .fillMaxWidth()
                             .fillMaxHeight(),
                         factory = {
-                            webView.value
+                            webView!!.value
                         },
                         update = {
                             it.loadUrl(url)

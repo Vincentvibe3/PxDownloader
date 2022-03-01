@@ -1,15 +1,15 @@
 package io.github.vincentvibe3.pixivdownloader.utils
 
+import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Environment
+import android.provider.MediaStore
 import android.webkit.CookieManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat.startActivity
 import io.github.vincentvibe3.pixivdownloader.R
 import io.github.vincentvibe3.pixivdownloader.serialization.UgoiraData
+import kotlinx.coroutines.delay
 import okhttp3.*
 import java.io.File
 import java.io.FileInputStream
@@ -20,9 +20,11 @@ import java.util.zip.ZipInputStream
 
 object Download {
 
-    val client = OkHttpClient()
+    val client = OkHttpClient.Builder()
+        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+        .build()
 
-    val pendingDownloads = HashMap<Long, String>()
+    var working = HashMap<String, Boolean>()
 
     val headers:HashMap<String, String> = hashMapOf(
             "Host" to "i.pximg.net",
@@ -41,8 +43,25 @@ object Download {
             "TE" to "trailers",
     )
 
-    fun getZip(id: String, data:UgoiraData, context: Context){
-        val url = data.body.src
+    suspend fun getZip(
+        id: String,
+        data: UgoiraData,
+        context: Context,
+        failureNotif: NotificationCompat.Builder
+    ){
+        working[id] = true
+        var downloadNotif = NotificationCompat.Builder(context, "Downloads")
+            .setSmallIcon(R.drawable.download_icon)
+            .setContentTitle("Download")
+            .setContentText("Downloading $id.zip")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setProgress(0, 0, true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+        with(NotificationManagerCompat.from(context)) {
+            notify(id.toInt(), downloadNotif.build())
+        }
+        val url = data.body!!.originalSrc
         val headerBuilder = Headers.Builder()
         for (header in headers){
             headerBuilder.add(header.key, header.value)
@@ -51,8 +70,6 @@ object Download {
         if (cookie!=null){
             headerBuilder.add("Cookie", cookie)
         }
-        println(cookie)
-        println(url)
         val dlHeaders = headerBuilder.build()
         val request = Request.Builder()
             .url(url)
@@ -60,7 +77,13 @@ object Download {
             .build()
         client.newCall(request).enqueue(object : Callback{
             override fun onFailure(call: Call, e: IOException) {
-                println("Download Failed")
+                with(NotificationManagerCompat.from(context)) {
+                    cancel(id.toInt())
+                }
+                with(NotificationManagerCompat.from(context)) {
+                    cancel(id.toInt())
+                    notify(-id.toInt(), failureNotif.build())
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -73,28 +96,73 @@ object Download {
                         while (true){
                             val read = bytes.read(byteArray)
                             if (read!=-1){
-                                outputStream.write(byteArray, 0, read);
+                                outputStream.write(byteArray, 0, read)
                             } else {
                                 break
                             }
                         }
                     }
-                    var builder = NotificationCompat.Builder(context, "Downloads")
-                        .setSmallIcon(R.drawable.download_icon)
-                        .setContentTitle("Download")
-                        .setContentText("Download Complete")
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    with(NotificationManagerCompat.from(context)) {
-                        notify(id.toInt(), builder.build())
-                    }
                     unzip(file, id, context)
-                    VideoGenerator().generate("${context.cacheDir.absolutePath}/$id", data)
 
+                    val success = VideoGenerator().generate("${context.cacheDir.absolutePath}/$id", data, "${context.filesDir}", id, context)
+
+                    with(NotificationManagerCompat.from(context)) {
+                        cancel(id.toInt())
+                    }
+                    if (success){
+                        saveFileUsingMediaStore(context, "${context.filesDir}/$id.webm","$id.webm")
+                        var completedNotif = NotificationCompat.Builder(context, "Downloads")
+                            .setSmallIcon(R.drawable.download_icon)
+                            .setContentTitle("Download")
+                            .setContentText("File saved to downloads as $id.webm")
+                            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        with(NotificationManagerCompat.from(context)) {
+                            notify(-id.toInt(), completedNotif.build())
+                        }
+                    } else {
+                        with(NotificationManagerCompat.from(context)) {
+                            notify(-id.toInt(), failureNotif.build())
+                        }
+                    }
+                    cleanup(context, id)
+
+
+                } else {
+                    with(NotificationManagerCompat.from(context)) {
+                        cancel(id.toInt())
+                        notify(-id.toInt(), failureNotif.build())
+                    }
                 }
-
+                working[id] = false
             }
-
         })
+        while (working[id] == true){
+            delay(1000L)
+        }
+        working.remove(id)
+    }
+
+    fun cleanup(context: Context, id:String){
+        File("${context.cacheDir.absolutePath}/$id.zip").delete()
+        File("${context.cacheDir.absolutePath}/$id").deleteRecursively()
+        File("${context.filesDir}/$id.webm").delete()
+    }
+
+    private fun saveFileUsingMediaStore(context: Context, path: String, fileName: String) {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "video/webm")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+        val resolver = context.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            File(path).inputStream().use { input ->
+                resolver.openOutputStream(uri).use { output ->
+                    input.copyTo(output!!, DEFAULT_BUFFER_SIZE)
+                }
+            }
+        }
     }
 
     fun unzip(file:File, id:String, context: Context){
@@ -115,7 +183,7 @@ object Download {
         }
         zis.closeEntry()
         zis.close()
-        file.delete()
     }
+
 
 }
