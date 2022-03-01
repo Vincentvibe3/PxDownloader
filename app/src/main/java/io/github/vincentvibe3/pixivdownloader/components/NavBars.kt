@@ -63,7 +63,18 @@ fun NavigationTopBar(
 fun ActivityTopBar(
     name:String,
     elevate:Boolean = false,
-    action: @Composable () -> Unit = {}
+    backIcon: @Composable () -> Unit = @Composable {
+        val context = LocalContext.current
+        IconButton(onClick = {
+            (context as Activity?)?.finish()
+        }) {
+            Icon(
+                imageVector = Icons.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint=MaterialTheme.colors.onBackground
+            )
+        } },
+    action: @Composable () -> Unit = {},
 ){
     val context = LocalContext.current
     TopAppBar(
@@ -74,15 +85,7 @@ fun ActivityTopBar(
             5.dp
         }
     ) {
-        IconButton(onClick = {
-            (context as Activity?)?.finish()
-        }) {
-            Icon(
-                imageVector = Icons.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint=MaterialTheme.colors.onBackground
-            )
-        }
+        backIcon()
         Text(
             text = name,
             style = MaterialTheme.typography.h6,

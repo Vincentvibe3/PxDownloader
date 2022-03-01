@@ -1,5 +1,8 @@
 package io.github.vincentvibe3.pixivdownloader
 
+import android.content.ClipDescription.MIMETYPE_TEXT_PLAIN
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -41,24 +45,23 @@ fun DownloadDialog(
     modalState: ModalBottomSheetState,
 ) {
     val focusManager = LocalFocusManager.current
-    val textState = remember { mutableStateOf(TextFieldValue()) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val fieldText = remember { mutableStateOf("") }
     BackHandler(enabled = modalState.isVisible) {
         focusManager.clearFocus()
-        textState.value = TextFieldValue()
         coroutineScope.launch {
             modalState.hide()
         }
     }
     if(!modalState.isVisible){
         focusManager.clearFocus()
-        textState.value = TextFieldValue()
+        fieldText.value = ""
     }
     TopAppBar(backgroundColor = MaterialTheme.colors.background, elevation = 0.dp) {
         IconButton(onClick = {
             focusManager.clearFocus()
-            textState.value = TextFieldValue()
+            fieldText.value = ""
             coroutineScope.launch {
                 modalState.hide()
             }
@@ -79,19 +82,29 @@ fun DownloadDialog(
         OutlinedTextField(
             modifier = Modifier
                 .fillMaxWidth(),
-            value = textState.value,
+            value = fieldText.value,
             label = {
                 Text(text = "Pixiv Artwork URL or Id")
             },
             singleLine = true,
-            isError = getInputId(textState.value.text) == null && textState.value.text.isNotBlank(),
-            onValueChange = { textState.value = it },
+            isError = getInputId(fieldText.value) == null && fieldText.value.isNotBlank(),
+            onValueChange = { fieldText.value = it },
             keyboardActions = KeyboardActions(
                 onDone = {
                     focusManager.clearFocus()
                 }
             )
         )
+        OutlinedButton(
+            onClick = {
+                      fieldText.value = "${fieldText.value}${checkClipboard(context)?:""}"
+            },
+            enabled = !checkClipboard(context).isNullOrEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = outlinedButtonColors(backgroundColor = MaterialTheme.colors.background)
+        ) {
+            Text("Paste from clipboard")
+        }
         Row(
             modifier = Modifier
                 .padding(10.dp)
@@ -117,7 +130,7 @@ fun DownloadDialog(
         ) {
             OutlinedButton(
                 onClick = {
-                    textState.value = TextFieldValue()
+                    fieldText.value = ""
                     focusManager.clearFocus()
                     coroutineScope.launch {
                         modalState.hide()
@@ -130,16 +143,16 @@ fun DownloadDialog(
             }
             Spacer(modifier = Modifier.width(10.dp))
             Button(
-                enabled = !getInputId(textState.value.text).isNullOrBlank(),
+                enabled = !getInputId(fieldText.value).isNullOrBlank(),
                 onClick = {
                     focusManager.clearFocus()
-                    val url = textState.value.text
+                    val url = fieldText.value
                     val input = getInputId(url)
                     if (input!=null){
-                        val intent = Intent(context, WebViewDownload::class.java)
+                        val intent = Intent(context, Browse::class.java)
                         intent.putExtra("id", input)
                         ContextCompat.startActivity(context, intent, Bundle.EMPTY)
-                        textState.value = TextFieldValue()
+                        fieldText.value = ""
                     } else {
                         val toast = Toast.makeText(context, "Invalid link", Toast.LENGTH_SHORT)
                         toast.show()
@@ -168,4 +181,14 @@ fun getInputId(input:String):String?{
     } else {
         null
     }
+}
+
+fun checkClipboard(context: Context):String?{
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    if(clipboard.hasPrimaryClip()){
+        if (clipboard.primaryClipDescription!!.hasMimeType(MIMETYPE_TEXT_PLAIN)){
+            return clipboard.primaryClip!!.getItemAt(0).text.toString()
+        }
+    }
+    return null
 }

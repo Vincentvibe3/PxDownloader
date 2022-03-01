@@ -140,6 +140,10 @@ object Download {
             delay(1000L)
         }
         working.remove(id)
+        val sharedprefs = context.getSharedPreferences("dlReq", Context.MODE_PRIVATE)
+        sharedprefs.edit()
+            .remove(id)
+            .apply()
     }
 
     fun cleanup(context: Context, id:String){

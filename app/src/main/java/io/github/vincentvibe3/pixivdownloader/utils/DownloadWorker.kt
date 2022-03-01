@@ -29,13 +29,9 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters): Worke
         val context = applicationContext
         val sharedprefs = context.getSharedPreferences("dlReq", Context.MODE_PRIVATE)
         val id = inputData.getString("id")
-        val json = PixivMetadata.PendingRequests[id] ?: sharedprefs.getString(id, null)
+        val json = sharedprefs.getString(id, null)
         if (json?.contains("\"error\":true") == false) {
             val data = json.let { Json.decodeFromString<UgoiraData>(it) }
-            PixivMetadata.PendingRequests.remove(id)
-            sharedprefs.edit()
-                .putString(id, json)
-                .apply()
             if (id != null) {
                 var failureNotif = NotificationCompat.Builder(context, "Downloads")
                     .setSmallIcon(R.drawable.download_icon)

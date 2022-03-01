@@ -38,7 +38,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.work.*
 import io.github.vincentvibe3.pixivdownloader.ui.theme.PixivDownloaderTheme
 import io.github.vincentvibe3.pixivdownloader.utils.DownloadWorker
-import io.github.vincentvibe3.pixivdownloader.utils.PixivMetadata
 import io.github.vincentvibe3.pixivdownloader.utils.checkCookies
 import kotlinx.coroutines.launch
 
@@ -90,27 +89,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         checkCookies(model)
-        if (PixivMetadata.PendingRequests.isNotEmpty()){
-            for (req in PixivMetadata.PendingRequests){
-                val context = this.applicationContext
-                val workData = Data.Builder()
-                    .putString("id", req.key)
-                    .build()
-                val downloadWorkRequest: WorkRequest =
-                    OneTimeWorkRequestBuilder<DownloadWorker>()
-                        .setInputData(workData)
-                        .addTag("video")
-                        .addTag(req.key)
-                        .build()
-                WorkManager
-                    .getInstance(context)
-                    .enqueue(downloadWorkRequest)
-
-
-
-
-            }
-        }
     }
 
 
@@ -176,7 +154,7 @@ fun Home(loggedIn:State<Boolean?>, navController:NavController) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         FloatingActionButton(onClick = {
-                            val intent = Intent(context, WebViewDownload::class.java)
+                            val intent = Intent(context, Browse::class.java)
                             ContextCompat.startActivity(context, intent, Bundle.EMPTY)
 
                         }, content = {
@@ -222,7 +200,7 @@ fun Home(loggedIn:State<Boolean?>, navController:NavController) {
                     }
                     items(pendingWork.value.orEmpty()){ work ->
                         Card(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),
