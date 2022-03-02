@@ -57,7 +57,7 @@ fun Login(){
                 .fillMaxWidth()
                 .fillMaxHeight(),
             topBar = {
-                ActivityTopBar(name = "Login", true, {})
+                ActivityTopBar(name = "Login", true)
             },
             backgroundColor = colorResource(id = R.color.white)
         ) {
